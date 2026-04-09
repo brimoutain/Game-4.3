@@ -1,0 +1,23 @@
+使用实例
+
+// 随机抽牌
+List<AnimalCard> cards = deckManager.drawPile;
+AnimalCard randomCard = GameUtility.GetRandomCard(cards);  // 不移除
+AnimalCard drawnCard = GameUtility.DrawRandomCard(cards);  // 移除
+
+// 保存数据
+GameUtility.SaveInt("PlayerScore", 100);
+GameUtility.SaveBool("IsUnlocked", true);
+GameUtility.SaveString("PlayerName", "张三");
+
+// 读取数据
+int score = GameUtility.LoadInt("PlayerScore", 0);
+bool isUnlocked = GameUtility.LoadBool("IsUnlocked", false);
+string name = GameUtility.LoadString("PlayerName", "默认名");
+
+// 保存列表
+List<string> releasedAnimals = new List<string> { "虫子", "大象" };
+GameUtility.SaveStringList("ReleasedAnimals", releasedAnimals);
+
+// 读取列表
+List<string> loadedList = GameUtility.LoadStringList("ReleasedAnimals");
