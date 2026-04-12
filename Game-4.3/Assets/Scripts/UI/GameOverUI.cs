@@ -41,6 +41,8 @@ public class GameOverUI : MonoBehaviour
     //¿ªÊ¼
     public void StartGame()
     {
+        if (ArkHealthSystem.Instance != null)
+            ArkHealthSystem.Instance.InitializeHp();
         SceneManager.LoadScene("L1");
     }
 

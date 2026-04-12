@@ -1,364 +1,415 @@
-//using System.Collections.Generic;
-//using UnityEngine;
-//using UnityEngine.UI;
-//using TMPro;
+using System.Collections.Generic;
+using TMPro;
+using UnityEngine;
+using UnityEngine.Serialization;
+using UnityEngine.UI;
 
-///// <summary>
-///// 战斗界面总控：更新血量/食物/手牌/场上/怪物显示
-///// 依赖：BattleController, CombatCalculator, ArkHealthSystem,
-/////        HandManager, FieldManager, ResourceManager
-///// </summary>
-//public class BattleUI : MonoBehaviour
-//{
-//    // ── 单例 ──────────────────────────────────────────────────
-//    public static BattleUI Instance { get; private set; }
+/// <summary>
+/// Handles battle UI refresh for hand cards, monsters, turn info and resources.
+/// </summary>
+public class BattleUI : MonoBehaviour
+{
+    public static BattleUI Instance { get; private set; }
 
-//    // ── Inspector 绑定 ─────────────────────────────────────────
-//    [Header("── 方舟血量 ──")]
-//    [SerializeField] private TextMeshProUGUI arkHpText;
-//    [SerializeField] private Slider          arkHpSlider;
+    [Header("Ark UI")]
+    [SerializeField] private TextMeshProUGUI arkHpText;
 
-//    [Header("── 食物 ──")]
-//    [SerializeField] private TextMeshProUGUI foodText;
-//    [SerializeField] private Slider          foodSlider;
+    [Header("Food UI")]
+    [SerializeField] private TextMeshProUGUI foodText;
 
-//    [Header("── 回合信息 ──")]
-//    [SerializeField] private TextMeshProUGUI turnText;
-//    [SerializeField] private Button          endTurnButton;
+    [Header("Turn UI")]
+    [SerializeField] private TextMeshProUGUI turnText;
+    [SerializeField] private Button endTurnButton;
 
-//    [Header("── 消息提示 ──")]
-//    [SerializeField] private TextMeshProUGUI messageText;
-//    [SerializeField] private float           messageDuration = 2f;
+    [Header("Hand")]
+    [SerializeField] private RectTransform handContainer;
+    [SerializeField] private GameObject handCardPrefab;
 
-//    [Header("── 手牌区 ──")]
-//    [SerializeField] private Transform       handContainer;   // 手牌卡牌的父节点
-//    [SerializeField] private GameObject      handCardPrefab;  // 手牌卡牌预制体
+    [Header("Hand Arc Layout")]
+    [SerializeField] private bool useHandArcLayout = true;
+    [SerializeField] private Vector2 handArcLeftmostPosition = new Vector2(400f, 0f);
+    [SerializeField] private float handArcDegrees = 140f;
+    [SerializeField] private float handArcRadius = 420f;
+    [SerializeField] private float handArcCenterYOffset = -260f;
+    [SerializeField] private float handArcRotationMultiplier = -0.55f;
 
-//    [Header("── 场地区 ──")]
-//    [SerializeField] private Transform       fieldContainer;  // 场上卡牌的父节点
-//    [SerializeField] private GameObject      fieldCardPrefab; // 场上卡牌预制体
+    [Header("Card Display")]
+    [Tooltip("When enabled, the prefab art is used directly and TMP text fields are not overwritten.")]
+    [SerializeField] private bool fullCardArtOnly = true;
 
-//    [Header("── 怪物区 ──")]
-//    [SerializeField] private Transform       monsterContainer;  // 怪物的父节点
-//    [SerializeField] private GameObject      monsterPrefab;     // 怪物 UI 预制体
+    [Header("Monsters")]
+    [SerializeField] private RectTransform monsterContainer;
+    [Tooltip("Falls back to handCardPrefab when empty.")]
+    [FormerlySerializedAs("monsterPrefab")]
+    [SerializeField] private GameObject monsterCardPrefab;
 
-//    // ── 外部依赖（场景引用）────────────────────────────────────
-//    [Header("── 系统依赖 ──")]
-//    [SerializeField] private BattleController battleController;
-//    [SerializeField] private ArkHealthSystem  arkHealthSystem;
-//    [SerializeField] private HandManager      handManager;
-//    [SerializeField] private FieldManager     fieldManager;
-//    [SerializeField] private ResourceManager  resourceManager;
+    [Header("Dependencies")]
+    [SerializeField] private BattleController battleController;
+    [SerializeField] private ArkHealthSystem arkHealthSystem;
+    [SerializeField] private HandManager handManager;
+    [SerializeField] private FieldManager fieldManager;
+    [SerializeField] private ResourceManager resourceManager;
 
-//    // ── 内部状态 ───────────────────────────────────────────────
-//    private Coroutine messageClearCoroutine;
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
 
-//    // ── 生命周期 ───────────────────────────────────────────────
-//    private void Awake()
-//    {
-//        if (Instance != null && Instance != this)
-//        {
-//            Destroy(gameObject);
-//            return;
-//        }
-//        Instance = this;
-//    }
+        Instance = this;
+    }
 
-//    private void OnEnable()
-//    {
-//        // 订阅系统事件
-//        ArkHealthSystem.OnHpChanged      += OnArkHpChanged;
-//        ResourceManager.OnFoodChanged     += OnFoodChanged;
-//        HandManager.OnHandChanged         += RefreshHandUI;
-//        FieldManager.OnFieldChanged       += RefreshFieldUI;
-//        BattleController.OnTurnStart      += OnTurnStart;
-//        BattleController.OnTurnEnd        += OnTurnEnd;
-//        BattleController.OnBattleOver     += OnBattleOver;
-//    }
+    private void OnEnable()
+    {
+        ArkHealthSystem.OnHpChanged += OnArkHpChanged;
+        ResourceManager.OnFoodChanged += OnFoodChanged;
+        HandManager.OnHandChanged += RefreshHandUI;
+        FieldManager.OnFieldChanged += RefreshHandUI;
+        BattleController.OnTurnStart += OnTurnStart;
+        BattleController.OnTurnEnd += OnTurnEnd;
+        BattleController.OnBattleOver += OnBattleOver;
+    }
 
-//    private void OnDisable()
-//    {
-//        ArkHealthSystem.OnHpChanged      -= OnArkHpChanged;
-//        ResourceManager.OnFoodChanged     -= OnFoodChanged;
-//        HandManager.OnHandChanged         -= RefreshHandUI;
-//        FieldManager.OnFieldChanged       -= RefreshFieldUI;
-//        BattleController.OnTurnStart      -= OnTurnStart;
-//        BattleController.OnTurnEnd        -= OnTurnEnd;
-//        BattleController.OnBattleOver     -= OnBattleOver;
-//    }
+    private void OnDisable()
+    {
+        ArkHealthSystem.OnHpChanged -= OnArkHpChanged;
+        ResourceManager.OnFoodChanged -= OnFoodChanged;
+        HandManager.OnHandChanged -= RefreshHandUI;
+        FieldManager.OnFieldChanged -= RefreshHandUI;
+        BattleController.OnTurnStart -= OnTurnStart;
+        BattleController.OnTurnEnd -= OnTurnEnd;
+        BattleController.OnBattleOver -= OnBattleOver;
+    }
 
-//    private void Start()
-//    {
-//        // 绑定结束回合按钮
-//        if (endTurnButton != null)
-//            endTurnButton.onClick.AddListener(OnEndTurnClicked);
+    private void Start()
+    {
+        if (endTurnButton != null)
+            endTurnButton.onClick.AddListener(OnEndTurnClicked);
 
-//        RefreshUI();
-//    }
+        RefreshUI();
+    }
 
-//    // ── 公开接口（供 A 侧调用）────────────────────────────────
+    public void RefreshUI()
+    {
+        RefreshArkHp();
+        RefreshFood();
+        RefreshHandUI();
+        RefreshMonsterUI();
+        RefreshTurnUI();
+    }
 
-//    /// <summary>刷新所有 UI 面板</summary>
-//    public void RefreshUI()
-//    {
-//        RefreshArkHp();
-//        RefreshFood();
-//        RefreshHandUI();
-//        RefreshFieldUI();
-//        RefreshMonsterUI();
-//        RefreshTurnUI();
-//    }
+    private void OnArkHpChanged(int current, int max)
+    {
+        RefreshArkHp(current, max);
+    }
 
-//    /// <summary>在屏幕上显示提示信息，duration 秒后自动消失</summary>
-//    public void ShowMessage(string msg, float duration = -1f)
-//    {
-//        if (messageText == null) return;
+    private void OnFoodChanged(int current, int max)
+    {
+        RefreshFood(current, max);
+    }
 
-//        messageText.text    = msg;
-//        messageText.enabled = true;
+    private void OnTurnStart()
+    {
+        RefreshTurnUI();
+        RefreshMonsterUI();
+        SetEndTurnButtonInteractable(true);
+    }
 
-//        if (messageClearCoroutine != null)
-//            StopCoroutine(messageClearCoroutine);
+    private void OnTurnEnd()
+    {
+        SetEndTurnButtonInteractable(false);
+    }
 
-//        float d = duration > 0f ? duration : messageDuration;
-//        messageClearCoroutine = StartCoroutine(ClearMessageAfter(d));
-//    }
+    private void OnBattleOver(bool victory)
+    {
+        SetEndTurnButtonInteractable(false);
+        Debug.Log(victory ? "[BattleUI] Battle won" : "[BattleUI] Battle lost");
+    }
 
-//    // ── 事件回调 ───────────────────────────────────────────────
+    private void OnEndTurnClicked()
+    {
+        battleController?.EndTurn();
+    }
 
-//    private void OnArkHpChanged(int current, int max)
-//    {
-//        RefreshArkHp(current, max);
-//    }
+    private void RefreshArkHp(int current = -1, int max = -1)
+    {
+        if (arkHealthSystem == null || arkHpText == null)
+            return;
 
-//    private void OnFoodChanged(int current, int max)
-//    {
-//        RefreshFood(current, max);
-//    }
+        int hp = current >= 0 ? current : arkHealthSystem.GetCurrentHp();
+        int maxHp = max >= 0 ? max : arkHealthSystem.GetMaxHp();
+        arkHpText.text = $"{hp} / {maxHp}";
+    }
 
-//    private void OnTurnStart()
-//    {
-//        RefreshTurnUI();
-//        RefreshMonsterUI();
-//        SetEndTurnButtonInteractable(true);
-//        ShowMessage($"第 {battleController.GetTurnNumber()} 回合开始");
-//    }
+    private void RefreshFood(int current = -1, int max = -1)
+    {
+        if (resourceManager == null || foodText == null)
+            return;
 
-//    private void OnTurnEnd()
-//    {
-//        SetEndTurnButtonInteractable(false);
-//    }
+        int food = current >= 0 ? current : resourceManager.GetFood();
+        int maxFood = max >= 0 ? max : resourceManager.GetMaxFood();
+        foodText.text = $"{food} / {maxFood}";
+    }
 
-//    private void OnBattleOver(bool victory)
-//    {
-//        SetEndTurnButtonInteractable(false);
-//        ShowMessage(victory ? "✦ 战斗胜利！✦" : "✦ 方舟已毁… ✦", 5f);
-//    }
+    private void RefreshTurnUI()
+    {
+        if (turnText != null && battleController != null)
+            turnText.text = $"{battleController.GetTurnNumber()}";
+    }
 
-//    private void OnEndTurnClicked()
-//    {
-//        battleController?.EndTurn();
-//    }
+    private void RefreshHandUI()
+    {
+        if (handContainer == null)
+            return;
 
-//    // ── 局部刷新 ───────────────────────────────────────────────
+        ClearChildren(handContainer);
 
-//    private void RefreshArkHp(int current = -1, int max = -1)
-//    {
-//        if (arkHealthSystem == null) return;
-//        int hp    = current >= 0 ? current : arkHealthSystem.GetCurrentHp();
-//        int maxHp = max     >= 0 ? max     : arkHealthSystem.GetMaxHp();
+        if (handManager == null)
+            return;
 
-//        if (arkHpText   != null) arkHpText.text     = $"方舟 HP: {hp} / {maxHp}";
-//        if (arkHpSlider != null)
-//        {
-//            arkHpSlider.maxValue = maxHp;
-//            arkHpSlider.value    = hp;
-//        }
-//    }
+        foreach (AnimalCard card in handManager.GetHand())
+        {
+            GameObject prefab = ResolveHandPrefab(card);
+            if (prefab == null)
+            {
+                Debug.LogWarning($"[BattleUI] No prefab for hand card: {card?.CardName}");
+                continue;
+            }
 
-//    private void RefreshFood(int current = -1, int max = -1)
-//    {
-//        if (resourceManager == null) return;
-//        int food    = current >= 0 ? current : resourceManager.GetFood();
-//        int maxFood = max     >= 0 ? max     : resourceManager.GetMaxFood();
+            GameObject go = Instantiate(prefab, handContainer, false);
+            if (!fullCardArtOnly)
+            {
+                ApplyCardTexts(
+                    go,
+                    card.CardName,
+                    $"{card.CurrentHp}/{card.MaxHp}",
+                    $"{card.Attack}",
+                    $"{card.FoodCost}");
+            }
 
-//        if (foodText   != null) foodText.text     = $"食物: {food} / {maxFood}";
-//        if (foodSlider != null)
-//        {
-//            foodSlider.maxValue = maxFood;
-//            foodSlider.value    = food;
-//        }
-//    }
+            EnsureVisibleImages(go);
+            SetPortraitOnCardImage(go, card.data != null ? card.data.portrait : null);
+            SetupPlayButton(go, card);
+        }
 
-//    private void RefreshTurnUI()
-//    {
-//        if (turnText != null && battleController != null)
-//            turnText.text = $"回合: {battleController.GetTurnNumber()}";
-//    }
+        LayoutHandCardsOnArc();
+    }
 
-//    private void RefreshHandUI()
-//    {
-//        if (handContainer == null || handCardPrefab == null) return;
+    private void RefreshMonsterUI()
+    {
+        if (monsterContainer == null)
+            return;
 
-//        // 清空旧卡牌 UI
-//        ClearChildren(handContainer);
+        ClearChildren(monsterContainer);
 
-//        if (handManager == null) return;
-//        List<AnimalCard> hand = handManager.GetHand();
-//        foreach (AnimalCard card in hand)
-//        {
-//            GameObject go = Instantiate(handCardPrefab, handContainer);
-//            SetupAnimalCardUI(go, card, isInHand: true);
-//        }
-//    }
+        if (battleController == null)
+            return;
 
-//    private void RefreshFieldUI()
-//    {
-//        if (fieldContainer == null || fieldCardPrefab == null) return;
+        foreach (Monster monster in battleController.GetCurrentMonsters())
+        {
+            GameObject prefab = ResolveMonsterPrefab(monster);
+            if (prefab == null)
+            {
+                Debug.LogWarning($"[BattleUI] No prefab for monster: {monster?.MonsterName}");
+                continue;
+            }
 
-//        ClearChildren(fieldContainer);
+            GameObject go = Instantiate(prefab, monsterContainer, false);
+            if (!fullCardArtOnly)
+            {
+                ApplyCardTexts(
+                    go,
+                    monster.MonsterName,
+                    $"{Mathf.Max(0, monster.CurrentHp)}/{monster.MaxHp}",
+                    $"{monster.Attack}",
+                    $"{monster.FoodReward}");
+            }
 
-//        if (fieldManager == null) return;
-//        List<AnimalCard> field = fieldManager.GetField();
-//        foreach (AnimalCard card in field)
-//        {
-//            GameObject go = Instantiate(fieldCardPrefab, fieldContainer);
-//            SetupAnimalCardUI(go, card, isInHand: false);
-//        }
-//    }
+            EnsureVisibleImages(go);
+            SetPortraitOnCardImage(go, monster.portrait);
+            HidePlayButton(go);
+        }
+    }
 
-//    private void RefreshMonsterUI()
-//    {
-//        if (monsterContainer == null || monsterPrefab == null) return;
+    private GameObject ResolveHandPrefab(AnimalCard card)
+    {
+        if (card != null && card.data != null && card.data.cardPrefab != null)
+            return card.data.cardPrefab;
 
-//        ClearChildren(monsterContainer);
+        return handCardPrefab;
+    }
 
-//        if (battleController == null) return;
-//        List<Monster> monsters = battleController.GetCurrentMonsters();
-//        foreach (Monster m in monsters)
-//        {
-//            GameObject go = Instantiate(monsterPrefab, monsterContainer);
-//            SetupMonsterUI(go, m);
-//        }
-//    }
+    private GameObject ResolveMonsterPrefab(Monster monster)
+    {
+        if (monster != null && monster.Prefab != null)
+            return monster.Prefab;
 
-//    // ── UI 元素初始化 ──────────────────────────────────────────
+        if (monsterCardPrefab != null)
+            return monsterCardPrefab;
 
-//    /// <summary>
-//    /// 初始化动物卡牌 UI。
-//    /// 预制体中应包含：
-//    ///   - "CardName"  (TextMeshProUGUI) → 名称
-//    ///   - "CardHp"    (TextMeshProUGUI) → HP
-//    ///   - "CardAtk"   (TextMeshProUGUI) → 攻击
-//    ///   - "CardFood"  (TextMeshProUGUI) → 食物消耗
-//    ///   - "PlayBtn"   (Button)          → 上场按钮（手牌时显示）
-//    ///   - "RecallBtn" (Button)          → 撤回按钮（场上时显示）
-//    /// </summary>
-//    private void SetupAnimalCardUI(GameObject go, AnimalCard card, bool isInHand)
-//    {
-//        SetText(go, "CardName", card.CardName);
-//        SetText(go, "CardHp",   $"HP: {card.CurrentHp}/{card.MaxHp}");
-//        SetText(go, "CardAtk",  $"ATK: {card.Attack}");
-//        SetText(go, "CardFood", $"食物: {card.FoodCost}");
+        return handCardPrefab;
+    }
 
-//        // 手牌：显示「上场」按钮
-//        Button playBtn   = FindButton(go, "PlayBtn");
-//        Button recallBtn = FindButton(go, "RecallBtn");
+    private void LayoutHandCardsOnArc()
+    {
+        if (!useHandArcLayout || handContainer == null)
+            return;
 
-//        if (playBtn != null)
-//        {
-//            playBtn.gameObject.SetActive(isInHand);
-//            if (isInHand)
-//            {
-//                playBtn.interactable = resourceManager != null &&
-//                                       resourceManager.HasEnoughFood(card.FoodCost);
-//                AnimalCard captured = card;
-//                playBtn.onClick.RemoveAllListeners();
-//                playBtn.onClick.AddListener(() => OnPlayCardClicked(captured));
-//            }
-//        }
+        int childCount = handContainer.childCount;
+        if (childCount == 0)
+            return;
 
-//        if (recallBtn != null)
-//        {
-//            recallBtn.gameObject.SetActive(!isInHand);
-//            if (!isInHand)
-//            {
-//                AnimalCard captured = card;
-//                recallBtn.onClick.RemoveAllListeners();
-//                recallBtn.onClick.AddListener(() => OnRecallCardClicked(captured));
-//            }
-//        }
-//    }
+        float halfArc = handArcDegrees * 0.5f;
+        float step = childCount > 1 ? handArcDegrees / (childCount - 1) : 0f;
+        float leftmostRadians = (-halfArc) * Mathf.Deg2Rad;
+        Vector2 leftmostOffset = new Vector2(
+            Mathf.Sin(leftmostRadians) * handArcRadius,
+            handArcCenterYOffset + (Mathf.Cos(leftmostRadians) * handArcRadius - handArcRadius));
 
-//    /// <summary>
-//    /// 初始化怪物 UI。
-//    /// 预制体中应包含：
-//    ///   - "MonsterName" (TextMeshProUGUI) → 名称
-//    ///   - "MonsterHp"   (TextMeshProUGUI) → HP
-//    ///   - "MonsterAtk"  (TextMeshProUGUI) → 攻击
-//    ///   - "HpSlider"    (Slider)          → HP 条
-//    /// </summary>
-//    private void SetupMonsterUI(GameObject go, Monster m)
-//    {
-//        SetText(go, "MonsterName", m.MonsterName);
-//        SetText(go, "MonsterHp",  $"HP: {Mathf.Max(0, m.CurrentHp)}/{m.MaxHp}");
-//        SetText(go, "MonsterAtk", $"ATK: {m.Attack}");
+        for (int i = 0; i < childCount; i++)
+        {
+            RectTransform cardRect = handContainer.GetChild(i) as RectTransform;
+            if (cardRect == null)
+                continue;
 
-//        Slider hpBar = go.GetComponentInChildren<Slider>(true);
-//        if (hpBar != null)
-//        {
-//            hpBar.maxValue = m.MaxHp;
-//            hpBar.value    = Mathf.Max(0, m.CurrentHp);
-//        }
-//    }
+            float angle = childCount == 1 ? 0f : (-halfArc + step * i);
+            float radians = angle * Mathf.Deg2Rad;
+            float x = Mathf.Sin(radians) * handArcRadius;
+            float y = handArcCenterYOffset + (Mathf.Cos(radians) * handArcRadius - handArcRadius);
+            Vector2 anchoredPosition = new Vector2(x, y) - leftmostOffset + handArcLeftmostPosition;
 
-//    // ── 按钮事件 ───────────────────────────────────────────────
+            cardRect.anchorMin = new Vector2(0.5f, 0.5f);
+            cardRect.anchorMax = new Vector2(0.5f, 0.5f);
+            cardRect.pivot = new Vector2(0.5f, 0.5f);
+            cardRect.anchoredPosition = anchoredPosition;
+            cardRect.localRotation = Quaternion.Euler(0f, 0f, angle * handArcRotationMultiplier);
+            cardRect.SetSiblingIndex(i);
+        }
+    }
 
-//    private void OnPlayCardClicked(AnimalCard card)
-//    {
-//        if (fieldManager == null) return;
-//        bool success = fieldManager.PlaceAnimal(card);
-//        if (!success)
-//            ShowMessage($"无法放置 {card.CardName}（食物不足或场地已满）");
-//    }
+    private static void ApplyCardTexts(GameObject go, string name, string hp, string atk, string foodLine)
+    {
+        SetText(go, "CardName", name);
+        SetText(go, "CardHp", hp);
+        SetText(go, "CardAtk", atk);
+        SetText(go, "CardFood", foodLine);
+    }
 
-//    private void OnRecallCardClicked(AnimalCard card)
-//    {
-//        fieldManager?.RecallAnimal(card);
-//    }
+    private static void SetPortraitOnCardImage(GameObject go, Sprite sprite)
+    {
+        if (sprite == null)
+            return;
 
-//    // ── 辅助方法 ───────────────────────────────────────────────
+        Image image = null;
+        Transform child = go.transform.Find("CardImage");
+        if (child != null)
+            image = child.GetComponent<Image>();
+        if (image == null)
+            image = go.GetComponent<Image>();
+        if (image == null)
+            return;
 
-//    private static void ClearChildren(Transform parent)
-//    {
-//        for (int i = parent.childCount - 1; i >= 0; i--)
-//            Destroy(parent.GetChild(i).gameObject);
-//    }
+        image.sprite = sprite;
+        image.enabled = true;
+    }
 
-//    private static void SetText(GameObject go, string childName, string value)
-//    {
-//        Transform t = go.transform.Find(childName);
-//        if (t == null) return;
-//        TextMeshProUGUI tmp = t.GetComponent<TextMeshProUGUI>();
-//        if (tmp != null) tmp.text = value;
-//    }
+    private static void EnsureVisibleImages(GameObject go)
+    {
+        Image[] images = go.GetComponentsInChildren<Image>(true);
+        foreach (Image image in images)
+        {
+            if (image == null || image.sprite == null)
+                continue;
 
-//    private static Button FindButton(GameObject go, string childName)
-//    {
-//        Transform t = go.transform.Find(childName);
-//        return t != null ? t.GetComponent<Button>() : null;
-//    }
+            Color color = image.color;
+            if (color.a <= 0f)
+            {
+                color.a = 1f;
+                image.color = color;
+            }
 
-//    private void SetEndTurnButtonInteractable(bool interactable)
-//    {
-//        if (endTurnButton != null)
-//            endTurnButton.interactable = interactable;
-//    }
+            if (!image.enabled)
+                image.enabled = true;
 
-//    private System.Collections.IEnumerator ClearMessageAfter(float seconds)
-//    {
-//        yield return new WaitForSeconds(seconds);
-//        if (messageText != null) messageText.enabled = false;
-//        messageClearCoroutine = null;
-//    }
-//}
+            if (!image.gameObject.activeSelf)
+                image.gameObject.SetActive(true);
+        }
+    }
+
+    private void SetupPlayButton(GameObject go, AnimalCard card)
+    {
+        Button playButton = ResolvePlayButton(go);
+        if (playButton == null)
+            return;
+
+        if (playButton.gameObject != go)
+            playButton.gameObject.SetActive(true);
+
+        playButton.interactable = resourceManager != null && resourceManager.HasEnoughFood(card.FoodCost);
+        AnimalCard captured = card;
+        playButton.onClick.RemoveAllListeners();
+        playButton.onClick.AddListener(() => OnPlayCardClicked(captured));
+    }
+
+    private static Button ResolvePlayButton(GameObject go)
+    {
+        Button child = FindButton(go, "PlayBtn");
+        if (child != null)
+            return child;
+
+        return go.GetComponent<Button>();
+    }
+
+    private static void HidePlayButton(GameObject go)
+    {
+        Button playButton = ResolvePlayButton(go);
+        if (playButton == null)
+            return;
+
+        playButton.onClick.RemoveAllListeners();
+        if (playButton.gameObject == go)
+            playButton.interactable = false;
+        else
+            playButton.gameObject.SetActive(false);
+    }
+
+    private void OnPlayCardClicked(AnimalCard card)
+    {
+        if (fieldManager == null)
+            return;
+
+        if (!fieldManager.PlaceAnimal(card))
+            Debug.LogWarning($"[BattleUI] Failed to place card: {card.CardName}");
+    }
+
+    private static void ClearChildren(Transform parent)
+    {
+        for (int i = parent.childCount - 1; i >= 0; i--)
+            Object.Destroy(parent.GetChild(i).gameObject);
+    }
+
+    private static void SetText(GameObject go, string childName, string value)
+    {
+        Transform child = go.transform.Find(childName);
+        if (child == null)
+            return;
+
+        TextMeshProUGUI tmp = child.GetComponent<TextMeshProUGUI>();
+        if (tmp != null)
+            tmp.text = value;
+    }
+
+    private static Button FindButton(GameObject go, string childName)
+    {
+        Transform child = go.transform.Find(childName);
+        return child != null ? child.GetComponent<Button>() : null;
+    }
+
+    private void SetEndTurnButtonInteractable(bool interactable)
+    {
+        if (endTurnButton != null)
+            endTurnButton.interactable = interactable;
+    }
+}
