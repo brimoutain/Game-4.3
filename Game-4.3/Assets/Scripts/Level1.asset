@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d45b89dd93aaa5a4c8e398f7fbac6449, type: 3}
+  m_Name: Level1
+  m_EditorClassIdentifier: 
+  levelName: Level 1
+  monsters:
+  - type: 0
+    spawnTurn: 1
+  - type: 0
+    spawnTurn: 1
+  - type: 0
+    spawnTurn: 1
+  - type: 0
+    spawnTurn: 3
+  - type: 0
+    spawnTurn: 3
+  - type: 0
+    spawnTurn: 3
+  - type: 1
+    spawnTurn: 5
+  animalCounts:
+  - data: {fileID: 11400000, guid: 5b0612041f6520b40866ede766c757d6, type: 2}
+    count: 5
+  - data: {fileID: 11400000, guid: e8a7fb560f67b3c4ea98644abc82fbb0, type: 2}
+    count: 1
+  - data: {fileID: 11400000, guid: cea18bf69a4c4d34fa854991f78f36da, type: 2}
+    count: 1
+  - data: {fileID: 11400000, guid: cd784bc89cfd27c44aa6fb661006dc73, type: 2}
+    count: 2
+  - data: {fileID: 11400000, guid: 4d8fa999f0d909548845116161d639b1, type: 2}
+    count: 2
+  releasedAnimals: []

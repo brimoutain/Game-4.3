@@ -64,7 +64,6 @@ public class CombatCalculator : MonoBehaviour
 
     // ── 内部阶段 ───────────────────────────────────────────────
 
-    /// <summary>动物先攻击怪物；怪物未死才反击动物</summary>
     private void ResolveAnimalVsMonster(AnimalCard animal, Monster monster, int slot)
     {
         // Step A：动物攻击怪物
@@ -73,7 +72,7 @@ public class CombatCalculator : MonoBehaviour
         Debug.Log($"[Combat] {animal.CardName} 攻击 {monster.MonsterName}，" +
                   $"造成 {animalDmg} 伤害（怪物剩余 {Mathf.Max(0, monster.CurrentHp)} HP）");
 
-        // Step A+：触发 OnAttack 技能（怪物已扣血，死亡尚未结算）
+        // Step A+：触发 OnAttack 技能
         animal.OnAttack(MakeContext(animal, monster, slot));
 
         // Step B：怪物存活才反击
@@ -83,11 +82,23 @@ public class CombatCalculator : MonoBehaviour
             animal.CurrentHp -= monsterDmg;
             Debug.Log($"[Combat] {monster.MonsterName} 反击 {animal.CardName}，" +
                       $"造成 {monsterDmg} 伤害（动物剩余 {Mathf.Max(0, animal.CurrentHp)} HP）");
+        
+            // ⭐ 动物受到伤害后，刷新 UI
+            RefreshFieldSlotUI(slot);
         }
         else
         {
             Debug.Log($"[Combat] {monster.MonsterName} 被一击击倒，无法反击");
         }
+    }
+
+    /// <summary>
+    /// 刷新指定槽位的 UI 显示
+    /// </summary>
+    private void RefreshFieldSlotUI(int slotIndex)
+    {
+        // 通过 BattleUI 或直接找到 FieldSlot 更新
+        BattleUI.Instance?.RefreshFieldSlot(slotIndex);
     }
 
     /// <summary>怪物正对空槽，直接攻击方舟</summary>

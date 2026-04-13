@@ -13,7 +13,6 @@ public class MonsterDataConfig : ScriptableObject
     public int    smallHp          = 3;
     public int    smallAttack      = 2;
     public int    smallFoodReward  = 1;
-    public Sprite smallPortrait;
     public GameObject smallPrefab;
 
     [Header("大怪数值")]
@@ -21,7 +20,6 @@ public class MonsterDataConfig : ScriptableObject
     public int    bigHp            = 8;
     public int    bigAttack        = 4;
     public int    bigFoodReward    = 2;
-    public Sprite bigPortrait;
     public GameObject bigPrefab;
 
     /// <summary>根据类型生成 Monster 实例（spawnTurn 由调用方传入）</summary>
@@ -31,10 +29,10 @@ public class MonsterDataConfig : ScriptableObject
         {
             case LevelConfig.MonsterType.Big:
                 return new Monster(bigMonsterName, bigHp, bigAttack, bigFoodReward,
-                                   bigPortrait, bigPrefab, spawnTurn);
+                                   bigPrefab, spawnTurn);
             default: // Small
                 return new Monster(smallMonsterName, smallHp, smallAttack, smallFoodReward,
-                                   smallPortrait, smallPrefab, spawnTurn);
+                                   smallPrefab, spawnTurn);
         }
     }
 }

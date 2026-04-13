@@ -17,4 +17,6 @@ MonoBehaviour:
   attack: 1
   foodCost: 1
   portrait: {fileID: 0}
-  cardPrefab: {fileID: 7233321049727537593, guid: db8b647f2a1eedf46800852b5cf375ad, type: 3}
+  skill: {fileID: 11400000, guid: 1e37274781734f8eaec17fb8b20f9cdf, type: 2}
+  cardPrefab: {fileID: 7233321049727537593, guid: db8b647f2a1eedf46800852b5cf375ad,
+    type: 3}

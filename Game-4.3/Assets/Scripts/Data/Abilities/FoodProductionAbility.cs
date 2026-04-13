@@ -16,4 +16,13 @@ public class FoodProductionAbility : AbilityBase
         ctx.Resource.AddFood(foodProduction);
         Debug.Log($"[Ability-产粮] {ctx.Self.CardName} 产出 {foodProduction} 点食物");
     }
+    
+    public override void OnDeath(AbilityContext ctx)
+    {
+        if (DeckManager.Instance == null) return;
+        
+        // 添加到抽牌堆
+        DeckManager.Instance.drawPile.Add(ctx.Self);
+        Debug.Log($"[Ability-轮回] {ctx.Self.CardName} 死亡，已放回抽牌堆");
+    }
 }

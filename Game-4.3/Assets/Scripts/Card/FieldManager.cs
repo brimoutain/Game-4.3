@@ -59,7 +59,7 @@ public class FieldManager : MonoBehaviour
             return false;
         }
 
-        if (!handManager.PlayCard(card))
+        if (!handManager.PlayCard(card, false))
         {
             resourceManager.AddFood(card.FoodCost); // 回滚
             return false;

@@ -18,6 +18,7 @@ public class FieldSlot : MonoBehaviour, IDropHandler, IPointerEnterHandler, IPoi
     [SerializeField] private ResourceManager resourceManager;
 
     [Header("视觉反馈")]
+    [SerializeField] private bool showVisualFeedback = false;
     [SerializeField] private Color normalColor    = new Color(1f, 1f, 1f, 0.15f);
     [SerializeField] private Color hoverColor     = new Color(0.4f, 1f, 0.4f, 0.35f);
     [SerializeField] private Color occupiedColor  = new Color(0.6f, 0.6f, 0.6f, 0.25f);
@@ -39,6 +40,33 @@ public class FieldSlot : MonoBehaviour, IDropHandler, IPointerEnterHandler, IPoi
             fieldManager = FindObjectOfType<FieldManager>();
         if (resourceManager == null)
             resourceManager = FindObjectOfType<ResourceManager>();
+    }
+    
+    /// <summary>
+    /// 更新槽位中卡牌的显示（血量、攻击力）
+    /// </summary>
+    public void UpdateCardDisplay()
+    {
+        if (occupiedCardGO == null || OccupiedCard == null) return;
+    
+        // 更新血量显示
+        SetCardText(occupiedCardGO, "CardHp", $"{OccupiedCard.CurrentHp}/{OccupiedCard.MaxHp}");
+    
+        // 更新攻击力显示
+        SetCardText(occupiedCardGO, "CardAtk", $"{OccupiedCard.Attack}");
+    }
+
+    /// <summary>
+    /// 辅助方法：设置卡牌上的文本
+    /// </summary>
+    private void SetCardText(GameObject cardGO, string childName, string value)
+    {
+        Transform child = cardGO.transform.Find(childName);
+        if (child == null) return;
+    
+        TMPro.TextMeshProUGUI tmp = child.GetComponent<TMPro.TextMeshProUGUI>();
+        if (tmp != null)
+            tmp.text = value;
     }
 
     private void OnEnable()
@@ -139,7 +167,7 @@ public class FieldSlot : MonoBehaviour, IDropHandler, IPointerEnterHandler, IPoi
 
     public void OnPointerEnter(PointerEventData eventData)
     {
-        if (OccupiedCard == null && bgImage != null)
+        if (showVisualFeedback && OccupiedCard == null && bgImage != null)
             bgImage.color = hoverColor;
     }
 
@@ -158,9 +186,14 @@ public class FieldSlot : MonoBehaviour, IDropHandler, IPointerEnterHandler, IPoi
     }
 
     /// <summary>从外部同步占用状态（BattleUI 刷新时调用）</summary>
+    /// <summary>从外部同步占用状态（BattleUI 刷新时调用）</summary>
     public void SetOccupied(AnimalCard card)
     {
         OccupiedCard = card;
+    
+        // 注意：SetOccupied 时 occupiedCardGO 可能为 null（如果是通过数据同步）
+        // 这种情况下不需要更新 UI，因为卡牌 GameObject 可能还没有被创建
+    
         RefreshVisual();
     }
 
@@ -171,6 +204,8 @@ public class FieldSlot : MonoBehaviour, IDropHandler, IPointerEnterHandler, IPoi
     private void RefreshVisual()
     {
         if (bgImage == null) return;
-        bgImage.color = OccupiedCard != null ? occupiedColor : normalColor;
+        bgImage.color = showVisualFeedback
+            ? (OccupiedCard != null ? occupiedColor : normalColor)
+            : Color.clear;
     }
 }

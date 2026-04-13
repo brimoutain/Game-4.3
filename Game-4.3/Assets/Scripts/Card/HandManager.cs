@@ -47,11 +47,37 @@ public class HandManager : MonoBehaviour
         if (deckManager == null)
             return;
 
-        if (giveFishOnTurnDraw)
-            AddBonusFishCard();
-
         int drawCount = gameConfig != null ? gameConfig.cardsPerTurn : 2;
-        DrawRandom(drawCount);
+        bool addedFish = giveFishOnTurnDraw && AddBonusFishCard();
+        DrawRandom(addedFish ? drawCount - 1 : drawCount);
+        OnHandChanged?.Invoke();
+    }
+
+    public void RecycleHandForNextTurn()
+    {
+        if (deckManager == null)
+            return;
+
+        string fishName = GetFishKindName();
+        bool returnedAnyNonFish = false;
+
+        for (int i = deckManager.handCards.Count - 1; i >= 0; i--)
+        {
+            AnimalCard card = deckManager.handCards[i];
+            if (card == null)
+                continue;
+
+            deckManager.handCards.RemoveAt(i);
+            if (IsFishCard(card, fishName))
+                continue;
+
+            deckManager.drawPile.Add(card);
+            returnedAnyNonFish = true;
+        }
+
+        if (returnedAnyNonFish)
+            deckManager.Shuffle(deckManager.drawPile);
+
         OnHandChanged?.Invoke();
     }
 
@@ -77,12 +103,13 @@ public class HandManager : MonoBehaviour
         OnHandChanged?.Invoke();
     }
 
-    public bool PlayCard(AnimalCard card)
+    public bool PlayCard(AnimalCard card, bool notifyHandChanged = true)
     {
         if (deckManager == null || !deckManager.handCards.Remove(card))
             return false;
 
-        OnHandChanged?.Invoke();
+        if (notifyHandChanged)
+            OnHandChanged?.Invoke();
         return true;
     }
 
@@ -105,20 +132,21 @@ public class HandManager : MonoBehaviour
 
     public int HandCount => deckManager != null ? deckManager.handCards.Count : 0;
 
-    private void AddBonusFishCard()
+    private bool AddBonusFishCard()
     {
         if (fishCardData == null)
-            return;
+            return false;
 
         int maxHandSize = gameConfig != null ? gameConfig.maxHandSize : 7;
         if (deckManager.handCards.Count >= maxHandSize)
-            return;
+            return false;
 
         string fishName = GetFishKindName();
         if (!string.IsNullOrEmpty(fishName) && deckManager.handCards.Exists(card => IsFishCard(card, fishName)))
-            return;
+            return false;
 
         deckManager.handCards.Add(new AnimalCard(fishCardData));
+        return true;
     }
 
     private void DrawRandom(int count)

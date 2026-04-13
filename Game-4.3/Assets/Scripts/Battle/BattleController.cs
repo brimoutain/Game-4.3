@@ -71,6 +71,7 @@ public class BattleController : MonoBehaviour
 
         Debug.Log($"[BattleController] Turn {turnNumber} ended.");
         OnTurnEnd?.Invoke();
+        handManager?.RecycleHandForNextTurn();
 
         // 触发场上动物的回合结束技能（维护费/产出食物等），初次部署回合自动跳过
         ProcessFieldAbilitiesOnTurnEnd();
@@ -192,5 +193,16 @@ public class BattleController : MonoBehaviour
 
         handManager.DiscardHand();
         OnBattleOver?.Invoke(victory);
+        if (!victory)
+        {
+            OnBattleDefeat();
+        }
+    }
+    
+    public void OnBattleDefeat()
+    {
+        if (!battleActive) return;
+    
+        //处理失败逻辑
     }
 }

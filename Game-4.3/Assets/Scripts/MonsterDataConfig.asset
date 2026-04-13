@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9aa21f44b537b4c4a81759b6263c3cc7, type: 3}
+  m_Name: MonsterDataConfig
+  m_EditorClassIdentifier: 
+  smallMonsterName: Small
+  smallHp: 2
+  smallAttack: 1
+  smallFoodReward: 1
+  smallPrefab: {fileID: 2261189551600115554, guid: ad36f27587e0c74409eef7b344b4c217,
+    type: 3}
+  bigMonsterName: Big
+  bigHp: 3
+  bigAttack: 3
+  bigFoodReward: 3
+  bigPrefab: {fileID: 2751208965760465946, guid: ac2176a9c8ad6ab4c86ff2d5819a4de4,
+    type: 3}

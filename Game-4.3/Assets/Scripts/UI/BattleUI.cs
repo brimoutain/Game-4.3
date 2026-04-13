@@ -41,7 +41,6 @@ public class BattleUI : MonoBehaviour
     [SerializeField] private bool fullCardArtOnly = true;
 
     [Header("Monsters")]
-    [SerializeField] private RectTransform monsterContainer;
     [Tooltip("Falls back to handCardPrefab when empty.")]
     [FormerlySerializedAs("monsterPrefab")]
     [SerializeField] private GameObject monsterCardPrefab;
@@ -66,6 +65,10 @@ public class BattleUI : MonoBehaviour
     [SerializeField] private HandManager handManager;
     [SerializeField] private FieldManager fieldManager;
     [SerializeField] private ResourceManager resourceManager;
+
+    [Header("Toggle Panel")]
+    [SerializeField] private Button togglePanelButton;
+    [SerializeField] private GameObject targetPanel;
 
     private void Awake()
     {
@@ -105,7 +108,36 @@ public class BattleUI : MonoBehaviour
         if (endTurnButton != null)
             endTurnButton.onClick.AddListener(OnEndTurnClicked);
 
+        // 添加开关面板按钮监听
+        if (togglePanelButton != null)
+            togglePanelButton.onClick.AddListener(TogglePanel);
+
         RefreshUI();
+    }
+
+    /// <summary>
+    /// 切换目标面板的显示状态
+    /// </summary>
+    private void TogglePanel()
+    {
+        if (targetPanel == null)
+        {
+            Debug.LogWarning("[BattleUI] targetPanel 未赋值，无法切换");
+            return;
+        }
+
+        bool isActive = targetPanel.activeSelf;
+        targetPanel.SetActive(!isActive);
+        Debug.Log($"[BattleUI] 面板 {targetPanel.name} 设置为 {(isActive ? "隐藏" : "显示")}");
+    }
+
+    /// <summary>
+    /// 设置面板的显示状态
+    /// </summary>
+    public void SetPanelActive(bool active)
+    {
+        if (targetPanel != null)
+            targetPanel.SetActive(active);
     }
 
     public void RefreshUI()
@@ -122,7 +154,6 @@ public class BattleUI : MonoBehaviour
 
     private void OnFieldChanged()
     {
-        RefreshHandUI();
         RefreshFieldUI();
     }
 
@@ -138,6 +169,7 @@ public class BattleUI : MonoBehaviour
 
     private void OnTurnStart()
     {
+        RefreshHandUI();
         RefreshTurnUI();
         RefreshMonsterUI();
         SetEndTurnButtonInteractable(true);
@@ -234,6 +266,17 @@ public class BattleUI : MonoBehaviour
 
         LayoutHandCardsOnArc();
     }
+    
+    /// <summary>
+    /// 刷新指定槽位的显示
+    /// </summary>
+    public void RefreshFieldSlot(int slotIndex)
+    {
+        if (fieldSlots == null || slotIndex < 0 || slotIndex >= fieldSlots.Length) return;
+        if (fieldSlots[slotIndex] == null) return;
+    
+        fieldSlots[slotIndex].UpdateCardDisplay();
+    }
 
     private void RefreshFieldUI()
     {
@@ -243,8 +286,21 @@ public class BattleUI : MonoBehaviour
         for (int i = 0; i < fieldSlots.Length && i < slots.Length; i++)
         {
             if (fieldSlots[i] == null) continue;
-            fieldSlots[i].SetOccupied(slots[i]);
+        
+            AnimalCard animal = slots[i];
+            fieldSlots[i].SetOccupied(animal);
+        
+            // ⭐ 更新槽位中卡牌的显示（血量、攻击力）
+            fieldSlots[i].UpdateCardDisplay();
         }
+    }
+
+    private void UpdateFieldSlotDisplay(GameObject slotGO, AnimalCard animal)
+    {
+        if (animal == null) return;
+    
+        SetText(slotGO, "CardHp", $"{animal.CurrentHp}/{animal.MaxHp}");
+        SetText(slotGO, "CardAtk", $"{animal.Attack}");
     }
 
     private void RefreshMonsterUI()
@@ -275,11 +331,10 @@ public class BattleUI : MonoBehaviour
                     monster.MonsterName,
                     $"{Mathf.Max(0, monster.CurrentHp)}/{monster.MaxHp}",
                     $"{monster.Attack}",
-                    $"{monster.FoodReward}");
+                    string.Empty);
             }
 
             EnsureVisibleImages(go);
-            SetPortraitOnCardImage(go, monster.portrait);
             ApplyMonsterSlotLayout(go, monster);
             HidePlayButton(go);
         }
@@ -287,9 +342,6 @@ public class BattleUI : MonoBehaviour
 
     private RectTransform ResolveMonsterRoot()
     {
-        if (monsterContainer != null)
-            return monsterContainer;
-
         Transform existing = transform.Find(RuntimeMonsterContainerName);
         if (existing != null)
             return existing as RectTransform;
