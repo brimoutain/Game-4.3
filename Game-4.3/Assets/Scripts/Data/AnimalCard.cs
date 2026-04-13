@@ -2,18 +2,25 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// �ƶ��е�һ����ʵ�������ù����� <see cref="AnimalData"/>��ͬ�ֶ��������ָ��ͬһ Data��
-/// �� <see cref="currentHp"/> Ϊ���ڿɱ�״̬��
+/// �ƶ��е�һ����ʵ�������ù����� <see cref="AnimalData"/>��ͬ�ֶ��������ָ��ͬһ Data��
+/// �� <see cref="currentHp"/> Ϊ���ڿɱ�״̬��
 /// </summary>
 [Serializable]
 public class AnimalCard
 {
     public AnimalData data;
 
-    /// <summary>����ս���õ�ǰ HP���ϳ�ʱ������Ϊ Data.hp</summary>
+    /// <summary>战斗中的当前 HP，上场时重置为 Data.hp</summary>
     public int currentHp;
 
-    /// <summary>��Ź顢�顸�㡹���߼�һ�µ�������</summary>
+    /// <summary>
+    /// 是否已经历过至少一次回合结束（EndTurn）。
+    /// 初次部署的回合 = false，之后每次 EndTurn 后设为 true。
+    /// 用于"初次部署不触发"类技能的判断。
+    /// </summary>
+    public bool HasSurvivedOneTurn;
+
+    /// <summary>��Ź顢�顸�㡹���߼�һ�µ�������</summary>
     public string KindName => data != null ? data.animalName : string.Empty;
 
     public string CardName => KindName;
@@ -33,15 +40,32 @@ public class AnimalCard
             currentHp = data.hp;
     }
 
-    public void OnPlay()
+    public void OnPlay(AbilityContext ctx)
     {
+        data?.skill?.OnPlay(ctx);
     }
 
-    public void OnAttack()
+    public void OnAttack(AbilityContext ctx)
     {
+        data?.skill?.OnAttack(ctx);
     }
 
-    public void OnDeath()
+    public void OnDeath(AbilityContext ctx)
     {
+        data?.skill?.OnDeath(ctx);
+    }
+
+    /// <summary>
+    /// 回合结束时调用。
+    /// 内部自动跳过初次部署回合（HasSurvivedOneTurn == false 时只标记，不触发技能）。
+    /// </summary>
+    public void OnTurnEnd(AbilityContext ctx)
+    {
+        if (!HasSurvivedOneTurn)
+        {
+            HasSurvivedOneTurn = true; // 标记：下一回合起生效
+            return;
+        }
+        data?.skill?.OnTurnEnd(ctx);
     }
 }

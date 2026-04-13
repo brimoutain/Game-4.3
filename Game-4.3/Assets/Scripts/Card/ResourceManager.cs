@@ -43,7 +43,7 @@ public class ResourceManager : MonoBehaviour
     public void ResetFood()
     {
         int initial = gameConfig != null ? gameConfig.startingFood : 3;
-        maxFood = gameConfig != null ? gameConfig.maxFood : 10;
+        maxFood     = gameConfig != null ? gameConfig.maxFood     : 10;
         currentFood = initial;
         Debug.Log($"[ResourceManager] 食物重置：{currentFood}/{maxFood}");
         OnFoodChanged?.Invoke(currentFood, maxFood);

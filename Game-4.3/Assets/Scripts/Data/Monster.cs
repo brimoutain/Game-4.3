@@ -13,6 +13,8 @@ public class Monster
 
     public Sprite portrait;
     public GameObject prefab;
+    public int spawnTurn = 1;
+    public int slotIndex = -1;
 
     public int currentHp;
     public bool isDead;
@@ -23,10 +25,12 @@ public class Monster
     public int Attack => attack;
     public int FoodReward => foodReward;
     public GameObject Prefab => prefab;
+    public int SpawnTurn => Mathf.Max(1, spawnTurn);
+    public int SlotIndex { get => slotIndex; set => slotIndex = value; }
     public bool IsDead { get => isDead; set => isDead = value; }
 
     // ??????
-    public Monster(string name, int health, int dmg, int reward, Sprite portraitSprite = null, GameObject monsterPrefab = null)
+    public Monster(string name, int health, int dmg, int reward, Sprite portraitSprite = null, GameObject monsterPrefab = null, int appearTurn = 1)
     {
         monsterName = name;
         hp = health;
@@ -34,6 +38,7 @@ public class Monster
         foodReward = reward;
         portrait = portraitSprite;
         prefab = monsterPrefab;
+        spawnTurn = Mathf.Max(1, appearTurn);
         currentHp = health;
         isDead = false;
     }

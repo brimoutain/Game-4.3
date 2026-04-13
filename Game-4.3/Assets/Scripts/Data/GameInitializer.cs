@@ -16,6 +16,10 @@ public class GameInitializer : MonoBehaviour
 
     public DeckManager deckManager;
 
+    [Header("关卡配置（优先使用）")]
+    [Tooltip("赋值后优先从 LevelConfig 读取牌库和放生记录，留空则使用下方 Shared Deck")]
+    public LevelConfig levelConfig;
+
     [Header("Shared Deck")]
     [Tooltip("Fill each animal count once. Released animals will be excluded automatically.")]
     public List<AnimalCountEntry> sharedAnimalCounts = new List<AnimalCountEntry>();
@@ -52,12 +56,43 @@ public class GameInitializer : MonoBehaviour
 
     private List<AnimalCard> BuildStarterDeck()
     {
+        // 优先从 LevelConfig 读取放生记录并写入 DeckManager
+        if (levelConfig != null)
+            ApplyLevelReleasedAnimals();
+
         HashSet<string> releasedAnimals = GetReleasedAnimals();
+
+        // 优先使用 LevelConfig 的牌库配置
+        if (levelConfig != null && levelConfig.animalCounts != null && levelConfig.animalCounts.Count > 0)
+            return BuildLevelConfigDeck(releasedAnimals);
 
         if (sharedAnimalCounts != null && sharedAnimalCounts.Count > 0)
             return BuildSharedDeck(releasedAnimals);
 
         return BuildLegacyDeck(releasedAnimals);
+    }
+
+    private void ApplyLevelReleasedAnimals()
+    {
+        if (deckManager == null || levelConfig.releasedAnimals == null) return;
+        foreach (AnimalData animal in levelConfig.releasedAnimals)
+        {
+            if (animal == null || string.IsNullOrEmpty(animal.animalName)) continue;
+            if (!deckManager.releasedAnimals.Contains(animal.animalName))
+                deckManager.releasedAnimals.Add(animal.animalName);
+        }
+    }
+
+    private List<AnimalCard> BuildLevelConfigDeck(HashSet<string> releasedAnimals)
+    {
+        var starterDeck = new List<AnimalCard>();
+        foreach (var entry in levelConfig.animalCounts)
+        {
+            if (entry == null || entry.data == null || entry.count <= 0) continue;
+            if (releasedAnimals.Contains(entry.data.animalName)) continue;
+            AddCards(starterDeck, entry.data, entry.count);
+        }
+        return starterDeck;
     }
 
     private HashSet<string> GetReleasedAnimals()

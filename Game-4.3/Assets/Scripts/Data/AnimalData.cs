@@ -18,6 +18,10 @@ public class AnimalData : ScriptableObject
     [Tooltip("Optional portrait used by generic card prefabs.")]
     public Sprite portrait;
 
+    [Header("特殊技能")]
+    [Tooltip("留空表示无特殊技能")]
+    public AbilityBase skill;
+
     [HideInInspector]
     public GameObject cardPrefab;
 }

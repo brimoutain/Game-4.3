@@ -2,69 +2,103 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 战斗结算：玩家优先攻击、怪物反击、死亡判定、食物获得
-/// 依赖：FieldManager, Monster, ResourceManager
+/// 战斗结算（槽位对位版）：
+/// 按槽位 0-3 一一对应 Monster 的 SlotIndex：
+///   - 动物有 / 怪物有 → 互相攻击
+///   - 动物有 / 怪物无 → 动物什么也不做
+///   - 动物无 / 怪物有 → 怪物直接攻击方舟
+/// 依赖：FieldManager, ArkHealthSystem, ResourceManager
 /// </summary>
 public class CombatCalculator : MonoBehaviour
 {
-    // ── 外部依赖 ───────────────────────────────────────────────
     [Header("依赖组件")]
-    [SerializeField] private FieldManager    fieldManager;
-    [SerializeField] private ArkHealthSystem arkHealthSystem;
-    [SerializeField] private ResourceManager resourceManager;
+    [SerializeField] private FieldManager     fieldManager;
+    [SerializeField] private ArkHealthSystem  arkHealthSystem;
+    [SerializeField] private ResourceManager  resourceManager;
+
+    // 构建 AbilityContext 的快捷方法
+    private AbilityContext MakeContext(AnimalCard animal, Monster target, int slot) =>
+        new AbilityContext(animal, target, fieldManager, arkHealthSystem, resourceManager, slot);
 
     // ── 结算入口 ───────────────────────────────────────────────
 
     /// <summary>
-    /// 执行一次完整的战斗结算流程。
+    /// 执行一次完整的槽位对位战斗结算。
     /// 返回 true 表示战斗可继续，false 表示方舟已死亡。
     /// </summary>
     public bool ResolveCombat(List<Monster> monsters)
     {
-        if (monsters == null || monsters.Count == 0) return true;
+        if (monsters == null) monsters = new List<Monster>();
 
-        List<AnimalCard> animals = fieldManager.GetField();
+        AnimalCard[] animalSlots = fieldManager.GetSlots(); // 长度固定为 FieldManager.SlotCount
 
-        // Step 1：玩家动物优先攻击
-        PlayerAttackPhase(animals, monsters);
-
-        // Step 2：移除已死亡怪物 & 结算食物奖励
-        ResolveMonsterDeaths(monsters);
-
-        // Step 3：存活怪物反击方舟
-        if (monsters.Exists(m => m.CurrentHp > 0))
+        // 按槽位逐一结算
+        for (int slot = 0; slot < FieldManager.SlotCount; slot++)
         {
-            MonsterCounterAttackPhase(monsters);
+            AnimalCard animal  = animalSlots[slot];
+            Monster    monster = FindMonsterInSlot(monsters, slot);
+
+            bool hasAnimal  = animal  != null && animal.CurrentHp  > 0;
+            bool hasMonster = monster != null && monster.CurrentHp > 0;
+
+            if (hasAnimal && hasMonster)
+            {
+                // 互相攻击
+                ResolveAnimalVsMonster(animal, monster, slot);
+            }
+            else if (!hasAnimal && hasMonster)
+            {
+                // 怪物正对空槽，直接打方舟
+                ResolveMonsterAttacksArk(monster);
+                if (arkHealthSystem.IsDead()) break;
+            }
+            // 动物对空槽：什么也不发生
         }
 
-        // Step 4：移除已死亡动物
-        ResolveAnimalDeaths(animals);
+        // 结算死亡
+        ResolveMonsterDeaths(monsters);
+        ResolveAnimalDeaths(animalSlots);
 
         return !arkHealthSystem.IsDead();
     }
 
     // ── 内部阶段 ───────────────────────────────────────────────
 
-    /// <summary>玩家场上动物依次攻击怪物（按场地顺序，依次打第一只存活怪）</summary>
-    private void PlayerAttackPhase(List<AnimalCard> animals, List<Monster> monsters)
+    /// <summary>动物先攻击怪物；怪物未死才反击动物</summary>
+    private void ResolveAnimalVsMonster(AnimalCard animal, Monster monster, int slot)
     {
-        foreach (AnimalCard animal in animals)
+        // Step A：动物攻击怪物
+        int animalDmg = animal.Attack;
+        monster.CurrentHp -= animalDmg;
+        Debug.Log($"[Combat] {animal.CardName} 攻击 {monster.MonsterName}，" +
+                  $"造成 {animalDmg} 伤害（怪物剩余 {Mathf.Max(0, monster.CurrentHp)} HP）");
+
+        // Step A+：触发 OnAttack 技能（怪物已扣血，死亡尚未结算）
+        animal.OnAttack(MakeContext(animal, monster, slot));
+
+        // Step B：怪物存活才反击
+        if (monster.CurrentHp > 0)
         {
-            if (animal == null || animal.CurrentHp <= 0) continue;
-
-            // 找第一只存活的怪物
-            Monster target = monsters.Find(m => m.CurrentHp > 0);
-            if (target == null) break; // 全部怪物已死
-
-            int dmg = animal.Attack;
-            target.CurrentHp -= dmg;
-
-            Debug.Log($"[Combat] {animal.CardName} 攻击 {target.MonsterName}，" +
-                      $"造成 {dmg} 点伤害（剩余 {Mathf.Max(0, target.CurrentHp)} HP）");
+            int monsterDmg = monster.Attack;
+            animal.CurrentHp -= monsterDmg;
+            Debug.Log($"[Combat] {monster.MonsterName} 反击 {animal.CardName}，" +
+                      $"造成 {monsterDmg} 伤害（动物剩余 {Mathf.Max(0, animal.CurrentHp)} HP）");
+        }
+        else
+        {
+            Debug.Log($"[Combat] {monster.MonsterName} 被一击击倒，无法反击");
         }
     }
 
-    /// <summary>结算已死亡怪物：给予食物奖励并记录</summary>
+    /// <summary>怪物正对空槽，直接攻击方舟</summary>
+    private void ResolveMonsterAttacksArk(Monster monster)
+    {
+        arkHealthSystem.TakeDamage(monster.Attack);
+        Debug.Log($"[Combat] {monster.MonsterName} 正对空槽，攻击方舟造成 {monster.Attack} 伤害" +
+                  $"（方舟剩余 {arkHealthSystem.GetCurrentHp()} HP）");
+    }
+
+    /// <summary>结算怪物死亡：给予食物奖励</summary>
     private void ResolveMonsterDeaths(List<Monster> monsters)
     {
         foreach (Monster m in monsters)
@@ -78,31 +112,30 @@ public class CombatCalculator : MonoBehaviour
         }
     }
 
-    /// <summary>存活怪物反击：攻击方舟本体</summary>
-    private void MonsterCounterAttackPhase(List<Monster> monsters)
+    /// <summary>结算动物死亡：触发 OnDeath 技能后从场上移除</summary>
+    private void ResolveAnimalDeaths(AnimalCard[] animalSlots)
     {
-        foreach (Monster m in monsters)
+        for (int i = 0; i < animalSlots.Length; i++)
         {
-            if (m.CurrentHp <= 0) continue;
-
-            arkHealthSystem.TakeDamage(m.Attack);
-            Debug.Log($"[Combat] {m.MonsterName} 反击方舟，造成 {m.Attack} 点伤害" +
-                      $"（方舟剩余 {arkHealthSystem.GetCurrentHp()} HP）");
-
-            if (arkHealthSystem.IsDead()) break; // 方舟死亡，不再继续
+            AnimalCard animal = animalSlots[i];
+            if (animal != null && animal.CurrentHp <= 0)
+            {
+                Debug.Log($"[Combat] {animal.CardName} 被毁，移出槽位 {i}");
+                // 触发死亡技能（如：遗粮返还食物）
+                animal.OnDeath(MakeContext(animal, null, i));
+                fieldManager.RemoveAnimalFromField(animal);
+            }
         }
     }
 
-    /// <summary>移除场上已死亡动物</summary>
-    private void ResolveAnimalDeaths(List<AnimalCard> animals)
+    // ── 工具方法 ──────────────────────────────────────────────
+
+    /// <summary>在怪物列表中找到占据指定槽位且存活的怪物</summary>
+    private static Monster FindMonsterInSlot(List<Monster> monsters, int slotIndex)
     {
-        for (int i = animals.Count - 1; i >= 0; i--)
-        {
-            if (animals[i] != null && animals[i].CurrentHp <= 0)
-            {
-                Debug.Log($"[Combat] {animals[i].CardName} 战死，移出战场");
-                fieldManager.RemoveAnimalFromField(animals[i]);
-            }
-        }
+        foreach (Monster m in monsters)
+            if (m != null && m.SlotIndex == slotIndex)
+                return m;
+        return null;
     }
 }

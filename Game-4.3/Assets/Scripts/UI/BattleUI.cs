@@ -1,6 +1,8 @@
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
 
@@ -9,6 +11,8 @@ using UnityEngine.UI;
 /// </summary>
 public class BattleUI : MonoBehaviour
 {
+    private const string RuntimeMonsterContainerName = "MonsterRuntimeContainer";
+
     public static BattleUI Instance { get; private set; }
 
     [Header("Ark UI")]
@@ -27,10 +31,9 @@ public class BattleUI : MonoBehaviour
 
     [Header("Hand Arc Layout")]
     [SerializeField] private bool useHandArcLayout = true;
-    [SerializeField] private Vector2 handArcLeftmostPosition = new Vector2(400f, 0f);
-    [SerializeField] private float handArcDegrees = 140f;
-    [SerializeField] private float handArcRadius = 420f;
-    [SerializeField] private float handArcCenterYOffset = -260f;
+    [SerializeField] private Vector2 handArcStartPosition = new Vector2(-100f, -25f);
+    [SerializeField] private Vector2 handArcEndPosition = new Vector2(120f, -25f);
+    [SerializeField] private float handArcRise = 40f;
     [SerializeField] private float handArcRotationMultiplier = -0.55f;
 
     [Header("Card Display")]
@@ -42,6 +45,20 @@ public class BattleUI : MonoBehaviour
     [Tooltip("Falls back to handCardPrefab when empty.")]
     [FormerlySerializedAs("monsterPrefab")]
     [SerializeField] private GameObject monsterCardPrefab;
+
+    [Header("Monster Slots")]
+    [SerializeField] private bool useMonsterSlotLayout = true;
+    [SerializeField] private Vector2[] monsterSlotPositions = new Vector2[]
+    {
+        new Vector2(-270f, 110f),
+        new Vector2(-90f, 110f),
+        new Vector2(90f, 110f),
+        new Vector2(270f, 110f)
+    };
+
+    [Header("Field Slots")]
+    [Tooltip("场上4个槽位的 FieldSlot 组件，按 0-3 顺序赋值")]
+    [SerializeField] private FieldSlot[] fieldSlots = new FieldSlot[FieldManager.SlotCount];
 
     [Header("Dependencies")]
     [SerializeField] private BattleController battleController;
@@ -66,7 +83,7 @@ public class BattleUI : MonoBehaviour
         ArkHealthSystem.OnHpChanged += OnArkHpChanged;
         ResourceManager.OnFoodChanged += OnFoodChanged;
         HandManager.OnHandChanged += RefreshHandUI;
-        FieldManager.OnFieldChanged += RefreshHandUI;
+        FieldManager.OnFieldChanged += OnFieldChanged;
         BattleController.OnTurnStart += OnTurnStart;
         BattleController.OnTurnEnd += OnTurnEnd;
         BattleController.OnBattleOver += OnBattleOver;
@@ -77,7 +94,7 @@ public class BattleUI : MonoBehaviour
         ArkHealthSystem.OnHpChanged -= OnArkHpChanged;
         ResourceManager.OnFoodChanged -= OnFoodChanged;
         HandManager.OnHandChanged -= RefreshHandUI;
-        FieldManager.OnFieldChanged -= RefreshHandUI;
+        FieldManager.OnFieldChanged -= OnFieldChanged;
         BattleController.OnTurnStart -= OnTurnStart;
         BattleController.OnTurnEnd -= OnTurnEnd;
         BattleController.OnBattleOver -= OnBattleOver;
@@ -96,8 +113,17 @@ public class BattleUI : MonoBehaviour
         RefreshArkHp();
         RefreshFood();
         RefreshHandUI();
+        RefreshFieldUI();
         RefreshMonsterUI();
         RefreshTurnUI();
+    }
+
+    // ── Field 事件处理 ────────────────────────────────────────
+
+    private void OnFieldChanged()
+    {
+        RefreshHandUI();
+        RefreshFieldUI();
     }
 
     private void OnArkHpChanged(int current, int max)
@@ -125,7 +151,19 @@ public class BattleUI : MonoBehaviour
     private void OnBattleOver(bool victory)
     {
         SetEndTurnButtonInteractable(false);
+        RefreshMonsterUI();
         Debug.Log(victory ? "[BattleUI] Battle won" : "[BattleUI] Battle lost");
+
+        if (victory)
+            StartCoroutine(LoadMapAfterDelay(1f));
+    }
+
+    private IEnumerator LoadMapAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        MapUI.passed++;
+        Debug.Log($"[BattleUI] Victory! MapUI.passed = {MapUI.passed}, loading Map scene.");
+        SceneManager.LoadScene("Map");
     }
 
     private void OnEndTurnClicked()
@@ -191,18 +229,31 @@ public class BattleUI : MonoBehaviour
 
             EnsureVisibleImages(go);
             SetPortraitOnCardImage(go, card.data != null ? card.data.portrait : null);
-            SetupPlayButton(go, card);
+            SetupDraggable(go, card);
         }
 
         LayoutHandCardsOnArc();
     }
 
+    private void RefreshFieldUI()
+    {
+        if (fieldSlots == null || fieldManager == null) return;
+
+        AnimalCard[] slots = fieldManager.GetSlots();
+        for (int i = 0; i < fieldSlots.Length && i < slots.Length; i++)
+        {
+            if (fieldSlots[i] == null) continue;
+            fieldSlots[i].SetOccupied(slots[i]);
+        }
+    }
+
     private void RefreshMonsterUI()
     {
-        if (monsterContainer == null)
+        RectTransform monsterRoot = ResolveMonsterRoot();
+        if (monsterRoot == null)
             return;
 
-        ClearChildren(monsterContainer);
+        ClearChildren(monsterRoot);
 
         if (battleController == null)
             return;
@@ -216,7 +267,7 @@ public class BattleUI : MonoBehaviour
                 continue;
             }
 
-            GameObject go = Instantiate(prefab, monsterContainer, false);
+            GameObject go = Instantiate(prefab, monsterRoot, false);
             if (!fullCardArtOnly)
             {
                 ApplyCardTexts(
@@ -229,8 +280,50 @@ public class BattleUI : MonoBehaviour
 
             EnsureVisibleImages(go);
             SetPortraitOnCardImage(go, monster.portrait);
+            ApplyMonsterSlotLayout(go, monster);
             HidePlayButton(go);
         }
+    }
+
+    private RectTransform ResolveMonsterRoot()
+    {
+        if (monsterContainer != null)
+            return monsterContainer;
+
+        Transform existing = transform.Find(RuntimeMonsterContainerName);
+        if (existing != null)
+            return existing as RectTransform;
+
+        GameObject runtimeContainer = new GameObject(RuntimeMonsterContainerName, typeof(RectTransform));
+        RectTransform rect = runtimeContainer.GetComponent<RectTransform>();
+        rect.SetParent(transform, false);
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = Vector2.zero;
+        return rect;
+    }
+
+    private void ApplyMonsterSlotLayout(GameObject go, Monster monster)
+    {
+        if (!useMonsterSlotLayout || go == null || monster == null || monsterSlotPositions == null || monsterSlotPositions.Length == 0)
+            return;
+
+        RectTransform rect = go.transform as RectTransform;
+        if (rect == null)
+            return;
+
+        int slotIndex = monster.SlotIndex;
+        if (slotIndex < 0 || slotIndex >= monsterSlotPositions.Length)
+            return;
+
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = monsterSlotPositions[slotIndex];
+        rect.localRotation = Quaternion.identity;
+        rect.SetSiblingIndex(slotIndex);
     }
 
     private GameObject ResolveHandPrefab(AnimalCard card)
@@ -261,12 +354,27 @@ public class BattleUI : MonoBehaviour
         if (childCount == 0)
             return;
 
-        float halfArc = handArcDegrees * 0.5f;
-        float step = childCount > 1 ? handArcDegrees / (childCount - 1) : 0f;
-        float leftmostRadians = (-halfArc) * Mathf.Deg2Rad;
-        Vector2 leftmostOffset = new Vector2(
-            Mathf.Sin(leftmostRadians) * handArcRadius,
-            handArcCenterYOffset + (Mathf.Cos(leftmostRadians) * handArcRadius - handArcRadius));
+        Vector2 chord = handArcEndPosition - handArcStartPosition;
+        float chordLength = chord.magnitude;
+        bool useCurvedArc = childCount > 1 && chordLength > 0.01f && handArcRise > 0.01f;
+        Vector2 midpoint = (handArcStartPosition + handArcEndPosition) * 0.5f;
+        Vector2 chordDirection = chordLength > 0.01f ? chord / chordLength : Vector2.right;
+        Vector2 arcNormal = new Vector2(-chordDirection.y, chordDirection.x);
+
+        float radius = 0f;
+        Vector2 circleCenter = midpoint;
+        float startAngle = 0f;
+        float endAngle = 0f;
+
+        if (useCurvedArc)
+        {
+            float halfChord = chordLength * 0.5f;
+            radius = (halfChord * halfChord) / (2f * handArcRise) + (handArcRise * 0.5f);
+            float centerOffset = radius - handArcRise;
+            circleCenter = midpoint - arcNormal * centerOffset;
+            startAngle = Mathf.Atan2(handArcStartPosition.y - circleCenter.y, handArcStartPosition.x - circleCenter.x);
+            endAngle = Mathf.Atan2(handArcEndPosition.y - circleCenter.y, handArcEndPosition.x - circleCenter.x);
+        }
 
         for (int i = 0; i < childCount; i++)
         {
@@ -274,17 +382,29 @@ public class BattleUI : MonoBehaviour
             if (cardRect == null)
                 continue;
 
-            float angle = childCount == 1 ? 0f : (-halfArc + step * i);
-            float radians = angle * Mathf.Deg2Rad;
-            float x = Mathf.Sin(radians) * handArcRadius;
-            float y = handArcCenterYOffset + (Mathf.Cos(radians) * handArcRadius - handArcRadius);
-            Vector2 anchoredPosition = new Vector2(x, y) - leftmostOffset + handArcLeftmostPosition;
+            float t = childCount == 1 ? 0.5f : (float)i / (childCount - 1);
+            Vector2 anchoredPosition;
+            float rotation = 0f;
+
+            if (useCurvedArc)
+            {
+                float currentAngle = Mathf.Lerp(startAngle, endAngle, t);
+                anchoredPosition = circleCenter + new Vector2(Mathf.Cos(currentAngle), Mathf.Sin(currentAngle)) * radius;
+                float relativeAngle = currentAngle * Mathf.Rad2Deg - 90f;
+                rotation = relativeAngle * handArcRotationMultiplier;
+            }
+            else
+            {
+                anchoredPosition = Vector2.Lerp(handArcStartPosition, handArcEndPosition, t);
+                if (childCount == 1 && handArcRise > 0.01f)
+                    anchoredPosition = midpoint + arcNormal * handArcRise;
+            }
 
             cardRect.anchorMin = new Vector2(0.5f, 0.5f);
             cardRect.anchorMax = new Vector2(0.5f, 0.5f);
             cardRect.pivot = new Vector2(0.5f, 0.5f);
             cardRect.anchoredPosition = anchoredPosition;
-            cardRect.localRotation = Quaternion.Euler(0f, 0f, angle * handArcRotationMultiplier);
+            cardRect.localRotation = Quaternion.Euler(0f, 0f, rotation);
             cardRect.SetSiblingIndex(i);
         }
     }
@@ -338,50 +458,30 @@ public class BattleUI : MonoBehaviour
         }
     }
 
-    private void SetupPlayButton(GameObject go, AnimalCard card)
+    /// <summary>给手牌 GameObject 添加/初始化 DraggableCard 组件</summary>
+    private static void SetupDraggable(GameObject go, AnimalCard card)
     {
-        Button playButton = ResolvePlayButton(go);
-        if (playButton == null)
-            return;
+        DraggableCard draggable = go.GetComponent<DraggableCard>();
+        if (draggable == null)
+            draggable = go.AddComponent<DraggableCard>();
+        draggable.Initialize(card);
 
-        if (playButton.gameObject != go)
-            playButton.gameObject.SetActive(true);
-
-        playButton.interactable = resourceManager != null && resourceManager.HasEnoughFood(card.FoodCost);
-        AnimalCard captured = card;
-        playButton.onClick.RemoveAllListeners();
-        playButton.onClick.AddListener(() => OnPlayCardClicked(captured));
-    }
-
-    private static Button ResolvePlayButton(GameObject go)
-    {
-        Button child = FindButton(go, "PlayBtn");
-        if (child != null)
-            return child;
-
-        return go.GetComponent<Button>();
+        // 隐藏旧的 PlayBtn（如果 prefab 里还有的话）
+        Transform playBtn = go.transform.Find("PlayBtn");
+        if (playBtn != null)
+            playBtn.gameObject.SetActive(false);
     }
 
     private static void HidePlayButton(GameObject go)
     {
-        Button playButton = ResolvePlayButton(go);
-        if (playButton == null)
-            return;
-
+        Button playButton = go.transform.Find("PlayBtn")?.GetComponent<Button>()
+                            ?? go.GetComponent<Button>();
+        if (playButton == null) return;
         playButton.onClick.RemoveAllListeners();
         if (playButton.gameObject == go)
             playButton.interactable = false;
         else
             playButton.gameObject.SetActive(false);
-    }
-
-    private void OnPlayCardClicked(AnimalCard card)
-    {
-        if (fieldManager == null)
-            return;
-
-        if (!fieldManager.PlaceAnimal(card))
-            Debug.LogWarning($"[BattleUI] Failed to place card: {card.CardName}");
     }
 
     private static void ClearChildren(Transform parent)
