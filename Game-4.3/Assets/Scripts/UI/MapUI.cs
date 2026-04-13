@@ -13,10 +13,14 @@ public class MapUI : MonoBehaviour
     public Button level_Sen;
     public Button level_Geb;
 
-    public Button enterButton_Cao;
+    public Image Card_Cao;
+    public Image Card_Sen;
+    public Image Card_Geb;
+
+    public Button enterButton_Cao;//告别字幕
     public Button enterButton_Sen;
     public Button enterButton_Geb;
-    public static int passed = 0;
+    public static int passed = 1;
 
     // 每个地点对应的可放归动物列表
     private List<string> caoYuanAnimals = new List<string> { "虫子", "大象" };
@@ -54,13 +58,31 @@ public class MapUI : MonoBehaviour
         enterButton_Cao.gameObject.SetActive(false);
         enterButton_Geb.gameObject.SetActive(false);
         enterButton_Sen.gameObject.SetActive(false);
+
+        Card_Cao.gameObject.SetActive(false);
+        Card_Sen.gameObject.SetActive(false);
+        Card_Geb.gameObject.SetActive(false);
     }
 
     public void UnlockNextLevel()
     {
-        level_Cao.gameObject.SetActive(passed >= 0);
-        level_Sen.gameObject.SetActive(passed >= 1);
-        level_Geb.gameObject.SetActive(passed >= 2);
+        if (passed == 1)
+        {
+            //为啥不绑一起，因为图层不一样
+            level_Cao.gameObject.SetActive(true);
+            Card_Cao.gameObject.SetActive(true);
+        }
+        else if(passed==2)
+        {
+            level_Sen.gameObject.SetActive(true);
+            Card_Sen.gameObject.SetActive(true);
+
+        }
+        else if (passed == 3)
+        {
+            level_Geb.gameObject.SetActive(true);
+            Card_Geb.gameObject.SetActive(true);
+        }
     }
 
     public void FanSheng(int level)
