@@ -20,12 +20,16 @@ public class MapUI : MonoBehaviour
     public Button enterButton_Cao;//告别字幕
     public Button enterButton_Sen;
     public Button enterButton_Geb;
-    public static int passed = 1;
+    public static int passed = 0;
 
     // 每个地点对应的可放归动物列表
     private List<string> caoYuanAnimals = new List<string> { "虫子", "大象" };
     private List<string> senLinAnimals = new List<string> { "猎豹" };
     private List<string> geBiAnimals = new List<string> { "骆驼" };
+
+    public Image win;
+    public Button winButton;
+    public AudioSource bgm;
 
     void Awake()
     {
@@ -48,6 +52,8 @@ public class MapUI : MonoBehaviour
         enterButton_Cao.onClick.AddListener(() => JumpToNextLevel(1));
         enterButton_Sen.onClick.AddListener(() => JumpToNextLevel(2));
         enterButton_Geb.onClick.AddListener(() => JumpToNextLevel(3));
+
+        winButton.onClick.AddListener(Win);
     }
 
     void HideAllPreviews()
@@ -62,10 +68,13 @@ public class MapUI : MonoBehaviour
         Card_Cao.gameObject.SetActive(false);
         Card_Sen.gameObject.SetActive(false);
         Card_Geb.gameObject.SetActive(false);
+
+        win.gameObject.SetActive(false);
     }
 
     public void UnlockNextLevel()
     {
+        Debug.Log(passed);
         if (passed == 1)
         {
             //为啥不绑一起，因为图层不一样
@@ -125,11 +134,12 @@ public class MapUI : MonoBehaviour
 
         switch (locationId)
         {
-            case 1: // 草原
-                animalsToRelease = caoYuanAnimals;
-                break;
-            case 2: // 丛林
+            case 1: // 丛林
                 animalsToRelease = senLinAnimals;
+                break;
+            case 2: // 草原
+                animalsToRelease = caoYuanAnimals;
+
                 break;
             case 3: // 戈壁
                 animalsToRelease = geBiAnimals;
@@ -160,8 +170,20 @@ public class MapUI : MonoBehaviour
     {
         Debug.Log("进入关卡：" + (level + 1));
         if (level < 3)
+        {
+            bgm.Stop();
             SceneManager.LoadScene(level + 1);
+            
+        }
         else
-            SceneManager.LoadScene("Menu");
+        {
+            win.gameObject.SetActive(true);
+        }
+    }
+
+    public void Win()
+    {
+        bgm.Stop();
+        SceneManager.LoadScene("Menu");
     }
 }

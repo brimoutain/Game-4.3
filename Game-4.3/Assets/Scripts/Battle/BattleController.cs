@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 /// <summary>
 /// Coordinates battle lifecycle, turn flow, and win/loss checks.
@@ -27,6 +29,9 @@ public class BattleController : MonoBehaviour
     public static event Action OnTurnEnd;
     public static event Action<bool> OnBattleOver;
 
+    public Image fail;
+    public Button failButton;
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -36,6 +41,8 @@ public class BattleController : MonoBehaviour
         }
 
         Instance = this;
+
+        fail.gameObject.SetActive(false);
     }
 
     public void StartBattle(List<Monster> monsters)
@@ -202,7 +209,13 @@ public class BattleController : MonoBehaviour
     public void OnBattleDefeat()
     {
         if (!battleActive) return;
-    
+       
         //处理失败逻辑
+        fail.gameObject.SetActive(true);
+        failButton.onClick.AddListener(Fail);
+    }
+    public void Fail()
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 }

@@ -7,6 +7,7 @@ using UnityEngine;
 /// </summary>
 public class GameInitializer : MonoBehaviour
 {
+    public static GameInitializer Instance { get; private set; }
     [Serializable]
     public class AnimalCountEntry
     {
@@ -41,6 +42,12 @@ public class GameInitializer : MonoBehaviour
 
     private void Start()
     {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(Instance.gameObject);
+        }
+        Instance = this;
+
         if (deckManager == null)
         {
             Debug.LogError("[GameInitializer] deckManager is not assigned.");

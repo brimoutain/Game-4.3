@@ -18,6 +18,8 @@ public class GameOverUI : MonoBehaviour
     //else
     [SerializeField] private Button ReturnToMenuButton;
 
+    public AudioSource bgm;
+
     private void Awake()
     {
 
@@ -43,6 +45,7 @@ public class GameOverUI : MonoBehaviour
     {
         if (ArkHealthSystem.Instance != null)
             ArkHealthSystem.Instance.InitializeHp();
+        bgm.Stop();
         SceneManager.LoadScene("L1");
     }
 

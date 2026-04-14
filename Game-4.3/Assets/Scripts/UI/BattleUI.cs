@@ -11,6 +11,8 @@ using UnityEngine.UI;
 /// </summary>
 public class BattleUI : MonoBehaviour
 {
+
+
     private const string RuntimeMonsterContainerName = "MonsterRuntimeContainer";
 
     public static BattleUI Instance { get; private set; }
@@ -69,6 +71,8 @@ public class BattleUI : MonoBehaviour
     [Header("Toggle Panel")]
     [SerializeField] private Button togglePanelButton;
     [SerializeField] private GameObject targetPanel;
+
+    public AudioSource bgm;
 
     private void Awake()
     {
@@ -194,6 +198,7 @@ public class BattleUI : MonoBehaviour
     {
         yield return new WaitForSeconds(delay);
         MapUI.passed++;
+        bgm.Stop();
         Debug.Log($"[BattleUI] Victory! MapUI.passed = {MapUI.passed}, loading Map scene.");
         SceneManager.LoadScene("Map");
     }
