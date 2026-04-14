@@ -7,7 +7,6 @@ using UnityEngine.UI;
 
 public class MapUI : MonoBehaviour
 {
-    public static MapUI Instance { get; private set; }
 
     public Button level_Cao;
     public Button level_Sen;
@@ -33,15 +32,7 @@ public class MapUI : MonoBehaviour
 
     void Awake()
     {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-
+      
         HideAllPreviews();
         UnlockNextLevel();
 
@@ -157,13 +148,14 @@ public class MapUI : MonoBehaviour
     {
         enterButton.gameObject.SetActive(true);
         enterButton.interactable = false;
-        StartCoroutine(EnableButtonAfterDelay(enterButton, 2f));
+        enterButton.interactable = true;
+        //StartCoroutine(EnableButtonAfterDelay(enterButton, 2f));
     }
 
     IEnumerator EnableButtonAfterDelay(Button button, float delay)
     {
         yield return new WaitForSeconds(delay);
-        button.interactable = true;
+        
     }
 
     public void JumpToNextLevel(int level)

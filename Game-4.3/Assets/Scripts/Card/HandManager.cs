@@ -27,7 +27,21 @@ public class HandManager : MonoBehaviour
             return;
         }
 
+
         Instance = this;
+
+
+        // 自动绑定持久化的 DeckManager 单例（跨场景加载时 Inspector 赋值可能失效）
+        if (deckManager == null)
+            deckManager = DeckManager.Instance;
+    }
+
+
+    private void Start()
+    {
+        // Start 时再次检查，因为 DeckManager 可能在 Awake 之后才初始化
+        if (deckManager == null)
+            deckManager = DeckManager.Instance;
     }
 
     public void DrawInitialHand()

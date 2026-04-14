@@ -83,6 +83,11 @@ public class BattleUI : MonoBehaviour
         }
 
         Instance = this;
+        battleController=FindObjectOfType<BattleController>();
+        arkHealthSystem = FindObjectOfType<ArkHealthSystem>();
+        fieldManager = FindObjectOfType<FieldManager>();
+        resourceManager = FindObjectOfType<ResourceManager>();
+        handManager = FindObjectOfType<HandManager>();
     }
 
     private void OnEnable()

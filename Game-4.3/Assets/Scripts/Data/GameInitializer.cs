@@ -41,10 +41,15 @@ public class GameInitializer : MonoBehaviour
 
     private void Start()
     {
-        if (deckManager == null)
+        deckManager = FindObjectOfType<DeckManager>();
+
+        if (deckManager != null)
         {
-            Debug.LogError("[GameInitializer] deckManager is not assigned.");
-            return;
+            Debug.Log("成功获取 DeckManager");
+        }
+        else
+        {
+            Debug.LogError("未找到 DeckManager");
         }
 
         if (resetSharedReleaseRecordsOnLoad)

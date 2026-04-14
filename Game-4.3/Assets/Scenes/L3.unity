@@ -347,7 +347,7 @@ GameObject:
   m_Component:
   - component: {fileID: 187741797}
   - component: {fileID: 187741798}
-  - component: {fileID: 187741796}
+  - component: {fileID: 187741799}
   m_Layer: 0
   m_Name: deck
   m_TagString: Untagged
@@ -355,23 +355,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &187741796
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 187741794}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0afb582d58ccc9f4586c881a6d89a7c2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  initialDeck: []
-  drawPile: []
-  discardPile: []
-  handCards: []
-  releasedAnimals: []
 --- !u!4 &187741797
 Transform:
   m_ObjectHideFlags: 0
@@ -399,7 +382,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3544a6c1890ce404cb2d127f55b913c6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  deckManager: {fileID: 187741796}
+  deckManager: {fileID: 0}
   levelConfig: {fileID: 11400000, guid: 253ef75212165744584fc3d5deb97505, type: 2}
   sharedAnimalCounts: []
   resetSharedReleaseRecordsOnLoad: 0
@@ -413,6 +396,22 @@ MonoBehaviour:
   DaXiangCardCount: 1
   ChongziCardCount: 5
   LuotuoCardCount: 2
+--- !u!114 &187741799
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 187741794}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0da48777fd21ab478902f36856850ce, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  battleController: {fileID: 1203600398}
+  gameInitializer: {fileID: 187741798}
+  monsterDataConfig: {fileID: 11400000, guid: cb74d5795b584711ab3311c21dd8f83d, type: 2}
+  autoStartOnSceneLoad: 1
 --- !u!1 &300500281
 GameObject:
   m_ObjectHideFlags: 0
@@ -1266,7 +1265,6 @@ GameObject:
   - component: {fileID: 1203600395}
   - component: {fileID: 1203600394}
   - component: {fileID: 1203600393}
-  - component: {fileID: 1203600392}
   m_Layer: 0
   m_Name: battle
   m_TagString: Untagged
@@ -1274,22 +1272,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1203600392
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1203600391}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a0da48777fd21ab478902f36856850ce, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  battleController: {fileID: 1203600398}
-  gameInitializer: {fileID: 187741798}
-  monsterDataConfig: {fileID: 11400000, guid: cb74d5795b584711ab3311c21dd8f83d, type: 2}
-  autoStartOnSceneLoad: 1
 --- !u!114 &1203600393
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1324,7 +1306,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a61bfc6e83d422844937701ca00e8fe9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  deckManager: {fileID: 187741796}
+  deckManager: {fileID: 0}
   gameConfig:
     startingArkHp: 10
     startingFood: 3
@@ -1780,7 +1762,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1377768939
 MonoBehaviour:
   m_ObjectHideFlags: 0

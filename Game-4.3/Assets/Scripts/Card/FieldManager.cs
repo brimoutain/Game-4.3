@@ -123,8 +123,24 @@ public class FieldManager : MonoBehaviour
             slots[idx] = null;
             Debug.Log($"[FieldManager] {card.CardName} 从槽位 {idx} 被移出（死亡）");
             OnFieldChanged?.Invoke();
+            return;
         }
-    }
+
+        // 保底：引用找不到时，遍历清除所有 HP <= 0 的死亡动物，防止死卡残留在场上
+        bool anyRemoved = false;
+        for (int i = 0; i < SlotCount; i++)
+        {
+            if (slots[i] != null && slots[i].CurrentHp <= 0)
+            {
+                Debug.Log($"[FieldManager] 保底清除：{slots[i].CardName} 从槽位 {i} 被移出（HP=0残留）");
+                slots[i] = null;
+                anyRemoved = true;
+            }
+        }
+        if (anyRemoved)
+            OnFieldChanged?.Invoke();
+    
+}
 
     // ── 查询 ──────────────────────────────────────────────────
 

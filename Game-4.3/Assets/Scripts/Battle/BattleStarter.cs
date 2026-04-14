@@ -17,13 +17,15 @@ public class BattleStarter : MonoBehaviour
 
     private bool hasStarted;
 
+    private void Awake()
+    {
+            battleController = FindObjectOfType<BattleController>();
+            gameInitializer = FindObjectOfType<GameInitializer>();
+    }
+
     private IEnumerator Start()
     {
-        if (battleController == null)
-            battleController = FindObjectOfType<BattleController>();
-        if (gameInitializer == null)
-            gameInitializer = FindObjectOfType<GameInitializer>();
-
+       
         if (autoStartOnSceneLoad)
         {
             yield return null;
