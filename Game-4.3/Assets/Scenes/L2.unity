@@ -1958,7 +1958,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   battleController: {fileID: 1529047034}
-  gameInitializer: {fileID: 0}
+  gameInitializer: {fileID: 1594791745}
   monsterDataConfig: {fileID: 11400000, guid: cb74d5795b584711ab3311c21dd8f83d, type: 2}
   autoStartOnSceneLoad: 1
 --- !u!114 &1529047029
