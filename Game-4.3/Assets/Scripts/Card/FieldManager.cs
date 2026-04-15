@@ -174,12 +174,13 @@ public class FieldManager : MonoBehaviour
         }
     }
 
-    /// <summary>清空所有槽位（战斗结束时可选调用）</summary>
     public void ClearField()
     {
         for (int i = 0; i < SlotCount; i++)
             slots[i] = null;
-        OnFieldChanged?.Invoke();
+    
+        OnFieldChanged?.Invoke();  // 触发每个 FieldSlot 清理 occupiedCardGO
+        Debug.Log("[FieldManager] 已清空所有槽位数据");
     }
 
     /// <summary>更新指定动物的当前 HP（由 CombatCalculator 在结算后调用）</summary>

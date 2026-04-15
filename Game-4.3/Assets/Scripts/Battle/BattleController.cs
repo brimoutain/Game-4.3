@@ -37,6 +37,12 @@ public class BattleController : MonoBehaviour
             Debug.LogWarning("[BattleController] StartBattle: monster list is empty.");
             return;
         }
+        
+        if (fieldManager != null)
+        {
+            fieldManager.ClearField();
+            Debug.Log("[BattleController] 已清空上一场场地");
+        }
 
         currentMonsters.Clear();
         pendingMonsters = new List<Monster>(monsters);
@@ -47,6 +53,8 @@ public class BattleController : MonoBehaviour
         }
         turnNumber = 0;
         battleActive = true;
+        
+        
 
         Debug.Log($"[BattleController] Battle started with {pendingMonsters.Count} configured monsters.");
 
